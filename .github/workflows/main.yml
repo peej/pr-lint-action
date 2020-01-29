@@ -1,14 +1,14 @@
-on: [push]
+on: [pull_request]
 
 jobs:
   pr-lint:
     runs-on: ubuntu-latest
-    name: A job lint
+    name: PR lint
     steps:
       - name: Run the linter
         id: lint
         uses: peej/pr-lint-action@master
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Get the output
-        run: echo "The head commit is ${{ steps.lint.outputs.head }}"
+        run: echo "${{ steps.lint.outputs.output }}"

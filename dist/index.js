@@ -36,8 +36,6 @@ module.exports =
 /******/ 		// Load entry module and return exports
 /******/ 		return __webpack_require__(34);
 /******/ 	};
-/******/ 	// initialize runtime
-/******/ 	runtime(__webpack_require__);
 /******/
 /******/ 	// run startup
 /******/ 	return startup();
@@ -185,30 +183,41 @@ module.exports = pump
 /***/ }),
 
 /***/ 34:
-/***/ (function(__unusedmodule, __webpack_exports__, __webpack_require__) {
+/***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
 
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(310);
-/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_actions_core__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(462);
-/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_actions_github__WEBPACK_IMPORTED_MODULE_1__);
-
-
+const core = __webpack_require__(310);
+const github = __webpack_require__(462);
 
 async function run() {
-    // This should be a token with access to your repository scoped in as a secret.
-    // The YML workflow will need to set githubToken with the GitHub Secret Token
-    // githubToken: ${{ secrets.GITHUB_TOKEN }}
-    // https://help.github.com/en/actions/automating-your-workflow-with-github-actions/authenticating-with-the-github_token#about-the-github_token-secret
-    const githubToken = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput('repo-token');
+    const githubToken = core.getInput('token');
 
-    const octokit = new _actions_github__WEBPACK_IMPORTED_MODULE_1__.GitHub(githubToken);
+    const octokit = new github.GitHub(githubToken);
 
-    if (_actions_github__WEBPACK_IMPORTED_MODULE_1__.context.eventName === 'push') {
-        const pushPayload = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload;
-        _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`The head commit is: ${pushPayload.head}`);
-        _actions_core__WEBPACK_IMPORTED_MODULE_0__.setOutput('head', pushPayload.head);
+    if (github.context.eventName === 'pull_request') {
+        const payload = github.context.payload;
+        const owner = payload.repository.owner.name;
+        const repo = payload.repository.name;
+
+        core.debug(JSON.stringify(payload));
+
+        const pullRequest = payload.pull_request;
+
+        await octokit.issues.createComment({
+            owner,
+            repo,
+            issue_number: pullRequest.number,
+            body: 'Have you thought about this that and the other?'
+        });
+
+        octokit.pulls.listCommits({
+            owner,
+            repo,
+            pull_number: pullRequest.number
+        }).each(commit => {
+            core.debug(JSON.stringify(commit));
+        }).then(() => {
+            core.setOutput('output', values.join(', '));
+        });
     }
 }
 
@@ -25033,43 +25042,4 @@ function escapeProperty(s) {
 
 /***/ })
 
-/******/ },
-/******/ function(__webpack_require__) { // webpackRuntimeModules
-/******/ 	"use strict";
-/******/ 
-/******/ 	/* webpack/runtime/make namespace object */
-/******/ 	!function() {
-/******/ 		// define __esModule on exports
-/******/ 		__webpack_require__.r = function(exports) {
-/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
-/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
-/******/ 			}
-/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
-/******/ 		};
-/******/ 	}();
-/******/ 	
-/******/ 	/* webpack/runtime/compat get default export */
-/******/ 	!function() {
-/******/ 		// getDefaultExport function for compatibility with non-harmony modules
-/******/ 		__webpack_require__.n = function(module) {
-/******/ 			var getter = module && module.__esModule ?
-/******/ 				function getDefault() { return module['default']; } :
-/******/ 				function getModuleExports() { return module; };
-/******/ 			__webpack_require__.d(getter, 'a', getter);
-/******/ 			return getter;
-/******/ 		};
-/******/ 	}();
-/******/ 	
-/******/ 	/* webpack/runtime/define property getter */
-/******/ 	!function() {
-/******/ 		// define getter function for harmony exports
-/******/ 		var hasOwnProperty = Object.prototype.hasOwnProperty;
-/******/ 		__webpack_require__.d = function(exports, name, getter) {
-/******/ 			if(!hasOwnProperty.call(exports, name)) {
-/******/ 				Object.defineProperty(exports, name, { enumerable: true, get: getter });
-/******/ 			}
-/******/ 		};
-/******/ 	}();
-/******/ 	
-/******/ }
-);
+/******/ });
