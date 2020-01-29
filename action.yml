@@ -1,8 +1,5 @@
 name: 'PR Lint'
 description: 'Lints your Pull Request for common mistakes'
-branding:
-  icon: 'eye'
-  color: 'orange'
 inputs:
   token:
     description: 'Github token'

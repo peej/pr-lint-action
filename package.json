@@ -2,9 +2,10 @@
   "name": "pr-lint-action",
   "version": "1.0.0",
   "description": "Github Action that lints your Pull Request for common mistakes",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "make",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -20,5 +21,8 @@
   "dependencies": {
     "@actions/core": "^1.2.2",
     "@actions/github": "^2.1.0"
+  },
+  "devDependencies": {
+    "jest": "^25.1.0"
   }
 }
