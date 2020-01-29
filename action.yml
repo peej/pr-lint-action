@@ -1,0 +1,12 @@
+name: 'PR Lint'
+description: 'Lints your Pull Request for common mistakes'
+inputs:
+  myToken:
+    description: 'Github token'
+    required: true
+outputs:
+  time:
+    description: 'The time it took'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'

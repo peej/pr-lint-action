@@ -1,0 +1,14 @@
+on: [push]
+
+jobs:
+  pr-lint:
+    runs-on: ubuntu-latest
+    name: A job lint
+    steps:
+      - name: Run the linter
+        id: lint
+        uses: peej/pr-lint-action@master
+        with:
+          who-to-greet: 'Mona the Octocat'
+      - name: Get the output
+        run: echo "The time was ${{ steps.lint.outputs.time }}"
