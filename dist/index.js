@@ -34,7 +34,7 @@ module.exports =
 /******/ 	// the startup function
 /******/ 	function startup() {
 /******/ 		// Load entry module and return exports
-/******/ 		return __webpack_require__(34);
+/******/ 		return __webpack_require__(133);
 /******/ 	};
 /******/
 /******/ 	// run startup
@@ -179,49 +179,6 @@ var pump = function () {
 
 module.exports = pump
 
-
-/***/ }),
-
-/***/ 34:
-/***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
-
-const core = __webpack_require__(310);
-const github = __webpack_require__(462);
-
-async function run() {
-    const githubToken = core.getInput('token');
-
-    const octokit = new github.GitHub(githubToken);
-
-    if (github.context.eventName === 'pull_request') {
-        const payload = github.context.payload;
-        const owner = payload.repository.owner.login;
-        const repo = payload.repository.name;
-
-        core.debug(JSON.stringify(payload));
-
-        const pullRequest = payload.pull_request;
-
-        await octokit.issues.createComment({
-            owner,
-            repo,
-            issue_number: pullRequest.number,
-            body: 'Have you thought about this that and the other?'
-        });
-
-        octokit.pulls.listCommits({
-            owner,
-            repo,
-            pull_number: pullRequest.number
-        }).then(commits => {
-            core.debug(JSON.stringify(commits));
-        }).then(() => {
-            core.setOutput('output', 'Done');
-        });
-    }
-}
-
-run();
 
 /***/ }),
 
@@ -2759,6 +2716,22 @@ function coerce (version) {
 
 /***/ }),
 
+/***/ 107:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const error = __webpack_require__(168);
+
+module.exports = function (commit) {
+    if (commit.files.length === 0) {
+        throw error(
+            'C-EMPTY',
+            'You have a commit that contains no changes, consider rebasing to discard this useless commit.'
+        );
+    }
+};
+
+/***/ }),
+
 /***/ 117:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
@@ -2876,6 +2849,132 @@ const osName = (platform, release) => {
 
 module.exports = osName;
 
+
+/***/ }),
+
+/***/ 133:
+/***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
+
+const core = __webpack_require__(310);
+const github = __webpack_require__(462);
+const sniffs = __webpack_require__(777);
+
+async function removeExistingComments(octokit, owner, repo, pullRequestNumber) {
+    return octokit.issues.listComments({
+        owner,
+        repo,
+        issue_number: pullRequestNumber
+    }).then(response => {
+        core.info(JSON.stringify(response));
+        const comments = response.data;
+        const promises = [];
+
+        for (const comment of comments) {
+            core.info(JSON.stringify(comment));
+
+            if (comment.user.type === 'Bot') {
+                promises.push(octokit.pulls.deleteComment({
+                    owner,
+                    repo,
+                    comment_id: comment.id
+                }));
+            }
+        }
+
+        return Promise.all(promises);
+    });
+}
+
+async function run() {
+    const githubToken = core.getInput('token');
+
+    const octokit = new github.GitHub(githubToken);
+
+    if (github.context.eventName === 'pull_request') {
+        const payload = github.context.payload;
+        const owner = payload.repository.owner.login;
+        const repo = payload.repository.name;
+        const pullRequest = payload.pull_request;
+
+        const promises = [];
+
+        core.info(`Checking pull request #${pullRequest.number}`);
+
+        //await removeExistingComments(octokit, owner, repo, pullRequest.number);
+
+        for (const name in sniffs.pull) {
+            const sniff = sniffs.pull[name];
+
+            promises.push(new Promise(() => {
+                core.info(`Running sniff: ${name}`);
+                try {
+                    return sniff(pullRequest);
+                } catch (error) {
+                    core.info(`${error.code}: ${error.message}`);
+
+                    return error;
+                }
+            }));
+        }
+
+        await octokit.pulls.listCommits({
+            owner,
+            repo,
+            pull_number: pullRequest.number
+        }).then(response => {
+            const commits = response.data;
+            
+            for (const commitData of commits) {
+                core.info(`Checking commit ${commitData.sha}`);
+
+                promises.push(octokit.repos.getCommit({
+                    owner,
+                    repo,
+                    ref: commitData.sha
+                }).then(response => {
+                    const promises = [];
+                    const commit = response.data;
+
+                    for (const name in sniffs.commit) {
+                        const sniff = sniffs.commit[name];
+
+                        promises.push(new Promise(() => {
+                            core.info(`Running sniff: ${name}`);
+                            try {
+                                return sniff(commit);
+                            } catch (error) {
+                                core.info(`${error.code}: ${error.message}`);
+
+                                return error;
+                            }
+                        }));
+                    }
+
+                    return Promise.all(promises);
+                }));
+            }
+        });
+
+        Promise.all(promises).then((results) => {
+            core.info(JSON.stringify(results));
+
+            const messages = results.flat().filter().map(error => {
+                return error.message;
+            });
+
+            return octokit.issues.createComment({
+                owner,
+                repo,
+                issue_number: pullRequest.number,
+                body: messages.join("\n")
+            });
+        }).then(() => {
+            core.setOutput('output', 'Done');
+        });
+    }
+}
+
+run();
 
 /***/ }),
 
@@ -3264,6 +3363,18 @@ module.exports.sync = (cmd, args, opts) => {
 
 module.exports.shellSync = (cmd, opts) => handleShell(module.exports.sync, cmd, opts);
 
+
+/***/ }),
+
+/***/ 168:
+/***/ (function(module) {
+
+module.exports = (code, message) => {
+  return {
+      code,
+      message
+  };
+};
 
 /***/ }),
 
@@ -3796,6 +3907,19 @@ function escapeArgument(arg, doubleEscapeMetaChars) {
 module.exports.command = escapeCommand;
 module.exports.argument = escapeArgument;
 
+
+/***/ }),
+
+/***/ 273:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const error = __webpack_require__(168);
+
+module.exports = function (commit) {
+    if (commit.parents.length > 1) {
+        throw error('C-MERGE', 'You have a merge commit in your PR, you should rebase your branch to squash away the merge.');
+    }
+};
 
 /***/ }),
 
@@ -5449,6 +5573,19 @@ function applyAcceptHeader (res, headers) {
   return headers
 }
 
+
+/***/ }),
+
+/***/ 513:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const error = __webpack_require__(168);
+
+module.exports = function (pullRequest) {
+    if (pullRequest.body === '') {
+        throw error('P-EMPTY', 'Perhaps it would make it easier for reviewers if you added a description?');
+    }
+};
 
 /***/ }),
 
@@ -23977,6 +24114,25 @@ module.exports = require("zlib");
 
 /***/ }),
 
+/***/ 777:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+module.exports = {
+    pull: {
+        'big-pr': __webpack_require__(878),
+        'empty-body': __webpack_require__(513),
+    },
+    commit: {
+        'empty-commit': __webpack_require__(107),
+        'empty-message': __webpack_require__(903),
+        'jira-issue': __webpack_require__(832),
+        'no-merge-commits': __webpack_require__(273),
+    }
+};
+
+
+/***/ }),
+
 /***/ 785:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
@@ -24132,6 +24288,19 @@ module.exports = function btoa(str) {
   return new Buffer(str).toString('base64')
 }
 
+
+/***/ }),
+
+/***/ 832:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const error = __webpack_require__(168);
+
+module.exports = function (commit) {
+    if (!commit.commit.message.match(/^\[([A-Z]+-[0-9]+|BOYSCOUT|GIRLSCOUT)] /)) {
+        throw error('C-JIRA', 'A commit message does not start with a Jira issue number, you should reword that commit to include an issue number.');
+    }
+};
 
 /***/ }),
 
@@ -24379,6 +24548,32 @@ function errname(uv, code) {
 
 /***/ }),
 
+/***/ 878:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const error = __webpack_require__(168);
+
+const AVG_FILES_PER_COMMIT = 10;
+const AVG_CHANGES_PER_COMMIT = 100;
+
+module.exports = function (pullRequest) {
+    if (pullRequest.changed_files / pullRequest.commits > AVG_FILES_PER_COMMIT) {
+        throw error(
+            'P-BIG1',
+            'You have changed a lot of files, maybe you can split your pull request up into more commits that make it easier to review?'
+        );
+    }
+
+    if (pullRequest.additions + pullRequest.deletions / pullRequest.commits > AVG_CHANGES_PER_COMMIT) {
+        throw error(
+            'P-BIG2',
+            'You have changed a lot of lines, maybe you can split your pull request up into more commits that make it easier to review?'
+        );
+    }
+};
+
+/***/ }),
+
 /***/ 890:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
@@ -24403,6 +24598,19 @@ module.exports = function (str) {
 	);
 };
 
+
+/***/ }),
+
+/***/ 903:
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const error = __webpack_require__(168);
+
+module.exports = function (commit) {
+    if (commit.commit.message === '') {
+        throw error('C-EMSG', 'You have a commit without a commit message, you should add a message to help explain your changes.');
+    }
+};
 
 /***/ }),
 

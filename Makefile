@@ -1,3 +1,6 @@
 build:
 	npm install
-	ncc build index.js
+	ncc build src/index.js
+
+test:
+	npm run test

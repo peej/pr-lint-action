@@ -10,5 +10,6 @@ jobs:
         uses: peej/pr-lint-action@master
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          sniffs: pull/empty-body
       - name: Get the output
         run: echo "${{ steps.lint.outputs.output }}"
