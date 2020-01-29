@@ -8,7 +8,7 @@ async function run() {
 
     if (github.context.eventName === 'pull_request') {
         const payload = github.context.payload;
-        const owner = payload.repository.owner.name;
+        const owner = payload.repository.owner.login;
         const repo = payload.repository.name;
 
         core.debug(JSON.stringify(payload));
