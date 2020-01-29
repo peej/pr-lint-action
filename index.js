@@ -26,10 +26,10 @@ async function run() {
             owner,
             repo,
             pull_number: pullRequest.number
-        }).each(commit => {
-            core.debug(JSON.stringify(commit));
+        }).then(commits => {
+            core.debug(JSON.stringify(commits));
         }).then(() => {
-            core.setOutput('output', values.join(', '));
+            core.setOutput('output', 'Done');
         });
     }
 }
