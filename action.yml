@@ -1,12 +1,12 @@
 name: 'PR Lint'
 description: 'Lints your Pull Request for common mistakes'
 inputs:
-  myToken:
+  repo-token:
     description: 'Github token'
     required: true
 outputs:
-  time:
-    description: 'The time it took'
+  head:
+    description: 'The head commit of the PR'
 runs:
   using: 'node12'
   main: 'dist/index.js'
